@@ -137,13 +137,16 @@ venv/
 .env
 
 # Generated training data and outputs
-data/
+/data/
 runs/
+multimodal-spectroscopic-dataset/
 checkpoints/
 *.ckpt
 *.pt
 *.pth
 *.safetensors
+*.pid
+src-val.txt
 *.log
 
 # Temporary previews and local artifacts
