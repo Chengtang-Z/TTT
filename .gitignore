@@ -152,3 +152,7 @@ src-val.txt
 # Temporary previews and local artifacts
 tmp/
 .DS_Store
+
+# Local nested clones and runtime state
+MultimodalAnalytical-*/
+.opennmt_runtime/
