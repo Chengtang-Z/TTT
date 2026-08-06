@@ -446,6 +446,7 @@ class MultiModalDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=True,
             drop_last=False,
+            persistent_workers=self.num_workers > 0,
         )
         return train_loader
 
@@ -461,6 +462,7 @@ class MultiModalDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=True,
             drop_last=False,
+            persistent_workers=self.num_workers > 0,
         )
         return val_loader
 
@@ -492,6 +494,7 @@ class MultiModalDataModule(pl.LightningDataModule):
             num_workers=self.num_workers,
             pin_memory=True,
             drop_last=False,
+            persistent_workers=self.num_workers > 0,
         )
         return test_loader
 

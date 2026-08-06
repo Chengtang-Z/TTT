@@ -174,7 +174,9 @@ def evaluate(predict_class, data_config, data_module, trainer, model, n_beams):
     return predictions
 
 def save_to_files(predictions, metrics, config, n_beams, name_file):
-    rank = torch.distributed.get_rank() if torch.cuda.is_available() else 0
+    rank = (
+        torch.distributed.get_rank() if torch.distributed.is_initialized() else 0
+    )
     paths = []
     if predictions:
         predictions_path = (

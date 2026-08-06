@@ -24,7 +24,15 @@ def build_trainer(
     save_checkpoints: str = "best_5",
     early_stopping_delta: Optional[float] = None,
     early_stopping_len_set_sel: Optional[bool] = False,
-    update_dataloaders: Optional[bool] = False
+    update_dataloaders: Optional[bool] = False,
+    precision: Optional[str] = None,
+    deterministic: bool = True,
+    benchmark: Optional[bool] = None,
+    log_every_n_steps: int = 1,
+    enable_progress_bar: bool = True,
+    num_sanity_val_steps: int = 2,
+    float32_matmul_precision: Optional[str] = None,
+    check_val_every_n_epoch: int = 1,
 ) -> Trainer:
     logger = TensorBoardLogger(log_dir, name=task)
     lr_monitor = LearningRateMonitor(logging_interval="step")
@@ -83,6 +91,9 @@ def build_trainer(
 
     strategy = "ddp_find_unused_parameters_true" if torch.cuda.device_count() > 1 else "auto"
 
+    if float32_matmul_precision is not None:
+        torch.set_float32_matmul_precision(float32_matmul_precision)
+
     trainer = Trainer(
         devices = -1 if torch.cuda.is_available() else 1,
         logger = logger,
@@ -91,12 +102,15 @@ def build_trainer(
         gradient_clip_val = clip_grad,
         limit_val_batches = limit_val_batches,
         callbacks = callbacks,
-        check_val_every_n_epoch = 1,
-        precision = "16-mixed" if torch.cuda.is_available() else "32-true" ,
+        check_val_every_n_epoch = check_val_every_n_epoch,
+        precision = precision or ("16-mixed" if torch.cuda.is_available() else "32-true"),
         strategy = strategy,
         val_check_interval=val_check_interval,
-        deterministic=True,
-        log_every_n_steps=1,
-        reload_dataloaders_every_n_epochs=1 if update_dataloaders else 0
+        deterministic=deterministic,
+        benchmark=benchmark,
+        log_every_n_steps=log_every_n_steps,
+        enable_progress_bar=enable_progress_bar,
+        num_sanity_val_steps=num_sanity_val_steps,
+        reload_dataloaders_every_n_epochs=1 if update_dataloaders else 0,
     )
     return trainer
