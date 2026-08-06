@@ -293,7 +293,13 @@ def build_dataset_multimodal(
     
     logger.info(f"Loading dataset from {data_path}")
     if Path(data_path).is_dir():
-        dataset_dict = load_dataset("parquet", data_dir=data_path, num_proc=num_cpu, columns=list(relevant_columns))
+        parquet_paths = sorted(Path(data_path).glob("*.parquet"))
+        if not parquet_paths:
+            raise ValueError(f"No parquet files found in data directory: {data_path}")
+        dataset_dict = load_dataset(
+            "parquet", data_files=[str(path) for path in parquet_paths],
+            num_proc=num_cpu, columns=list(relevant_columns)
+        )
     elif Path(data_path).is_file():
         dataset_dict = load_dataset("parquet", data_files=data_path, num_proc=num_cpu, columns=list(relevant_columns))
     else:

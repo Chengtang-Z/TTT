@@ -237,6 +237,7 @@ class HFWrapper(pl.LightningModule):
         weight_decay: float = 0,
         adam_beta1: float = 0.9,
         adam_beta2: float = 0.999,
+        fused_optimizer: bool = False,
         multimodal_norm: bool = True,
         modality_dropout: Optional[List[str]] = None,
         **kwargs,
@@ -287,6 +288,7 @@ class HFWrapper(pl.LightningModule):
         self.weight_decay = weight_decay
         self.adam_beta1 = adam_beta1
         self.adam_beta2 = adam_beta2
+        self.fused_optimizer = fused_optimizer
         self.num_steps = num_steps
 
         self.train_step_outputs: List[Dict[str, Any]] = list()
@@ -327,12 +329,17 @@ class HFWrapper(pl.LightningModule):
     def configure_optimizers(self):
         """Set up optimisers for pytorch lightning"""
         params = self.parameters()
+        optimizer_kwargs = {
+            "lr": self.lr,
+            "weight_decay": self.weight_decay,
+            "betas": (self.adam_beta1, self.adam_beta2),
+        }
+        if self.fused_optimizer and torch.cuda.is_available():
+            optimizer_kwargs["fused"] = True
 
         optim = OPTIMISER_REGISTRY[self.optimiser](
             params,
-            lr=self.lr,
-            weight_decay=self.weight_decay,
-            betas=(self.adam_beta1, self.adam_beta2),
+            **optimizer_kwargs,
         )
 
         if self.lr_scheduler == "cyclic":
@@ -513,6 +520,31 @@ class HFWrapper(pl.LightningModule):
             "val_token_acc": token_acc,
             "val_molecular_accuracy": torch.Tensor([scores["Top-1"]]).to(device=loss.device),
         }
+
+        if (
+            isinstance(self.hf_model, CustomModel)
+            and self.hf_model.align_network is not None
+            and "encoder_alignment_input" in batch
+            and model_output.encoder_hidden_states is not None
+        ):
+            encoder_hidden = model_output.encoder_hidden_states
+            valid_mask = (~batch["encoder_pad_mask"]).T.to(
+                device=encoder_hidden.device,
+                dtype=encoder_hidden.dtype,
+            )
+            pooled = (encoder_hidden * valid_mask.unsqueeze(-1)).sum(dim=1)
+            pooled = pooled / valid_mask.sum(dim=1, keepdim=True).clamp_min(1)
+
+            predicted = self.hf_model.predict_fingerprint(embeddings=pooled) >= 0.5
+            target = batch["encoder_alignment_input"].to(predicted.device) >= 0.5
+            intersection = (predicted & target).sum(dim=1).float()
+            union = (predicted | target).sum(dim=1).clamp_min(1).float()
+
+            val_outputs["val_fingerprint_bit_accuracy"] = (
+                predicted == target
+            ).float().mean()
+            val_outputs["val_fingerprint_tanimoto"] = (intersection / union).mean()
+
         if isinstance(model_output, CustomLMOutput):
             if model_output.loss_dict:
                 for key in model_output.loss_dict.keys():

@@ -20,6 +20,7 @@ lr_scheduler: exp
 weight_decay: 0.0
 adam_beta1: 0.9
 adam_beta2: 0.999
+fused_optimizer: False
 
 model_checkpoint_path: null
 batch_size: 16

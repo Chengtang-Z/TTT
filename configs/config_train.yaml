@@ -37,6 +37,14 @@ trainer:
   save_checkpoints: every_5_epochs
   early_stopping_len_set_sel: False
   update_dataloaders: null
+  precision: null
+  deterministic: True
+  benchmark: null
+  log_every_n_steps: 1
+  enable_progress_bar: True
+  num_sanity_val_steps: 2
+  float32_matmul_precision: null
+  check_val_every_n_epoch: 1
 
 defaults:
   - _self_

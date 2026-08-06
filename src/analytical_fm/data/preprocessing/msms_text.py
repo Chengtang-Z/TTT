@@ -1,6 +1,6 @@
 import logging
 from dataclasses import dataclass, field
-from typing import List
+from typing import List, Union
 
 import torch
 from datasets import Dataset
@@ -10,6 +10,9 @@ from ..tokenizer import build_regex_tokenizer
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
+
+
+MSMSSpectrum = Union[str, List[List[float]]]
 
 
 @dataclass
@@ -38,7 +41,7 @@ class MSMSTextPreprocessor:
 
         logging.info(f'Set max_sequence_length to {self.max_sequence_length}')
 
-    def __call__(self, msms_spectra: List[List[List[float]]]) -> torch.Tensor:
+    def __call__(self, msms_spectra: List[MSMSSpectrum]) -> torch.Tensor:
         processed_msms = self.process_msms(msms_spectra)
 
         tokenized_input = self.tokenizer(
@@ -51,10 +54,17 @@ class MSMSTextPreprocessor:
 
         return tokenized_input
 
-    def process_msms(self, msms_spectra: List[List[List[float]]]) -> List[str]:
+    def process_msms(self, msms_spectra: List[MSMSSpectrum]) -> List[str]:
         processed_msms = list()
 
         for msms in msms_spectra:
+            if isinstance(msms, str):
+                msms_string = msms.strip()
+                if not msms_string:
+                    raise ValueError("tagged MS/MS spectrum cannot be empty")
+                processed_msms.append(msms_string)
+                continue
+
             msms_string = ""
             for peak in msms:
                 if peak[1] < 1:
